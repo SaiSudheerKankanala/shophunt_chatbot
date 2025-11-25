@@ -41,9 +41,10 @@ def fetch_data():
 def ask(query: Query):
     df = fetch_data()
     q = query.question.lower()
-    products = df["product_name"].str.lower().tolist()
 
+    products = df["product_name"].str.lower().tolist()
     matches = [p for p in products if p in q]
+
     if not matches:
         return {"response": "Product unavailable"}
 
