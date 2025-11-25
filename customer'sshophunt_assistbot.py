@@ -29,7 +29,7 @@ conn = mysql.connector.connect(
     user='root',
     password='SjmGYKKMDAYKGzYQzlkISNiLSMeBvlfi',
     database='railway',
-    port=3306
+    port=19240
 )
 
 df = pd.read_sql("SELECT * FROM product_inventory;", conn)
