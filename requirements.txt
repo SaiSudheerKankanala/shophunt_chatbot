@@ -2,3 +2,11 @@ fastapi
 uvicorn
 mysql-connector-python
 pandas
+langchain-community
+langchain-text-splitters
+huggingface-hub
+sentence-transformers
+faiss-cpu
+transformers
+pypdf
+fpdf
