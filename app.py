@@ -1,12 +1,12 @@
-# app.py
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import mysql.connector
 import pandas as pd
-from fastapi import FastAPI
-from pydantic import BaseModel
 
 app = FastAPI()
-from fastapi.middleware.cors import CORSMiddleware
 
+# CORS FIX
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -37,32 +37,24 @@ def fetch_data():
 
     return df
 
-
 @app.post("/ask")
 def ask(query: Query):
-    df = fetch_data()   # Load DB ONLY when request comes
-
+    df = fetch_data()
     q = query.question.lower()
-    product_list = df["product_name"].str.lower().tolist()
+    products = df["product_name"].str.lower().tolist()
 
-    match = [p for p in product_list if p in q]
-    if not match:
+    matches = [p for p in products if p in q]
+    if not matches:
         return {"response": "Product unavailable"}
 
-    product = match[0]
-    row = df[df["product_name"].str.lower() == product]
-
-    if row.empty:
-        return {"response": "Product unavailable"}
-
-    row = row.iloc[0]
+    p_name = matches[0]
+    row = df[df["product_name"].str.lower() == p_name].iloc[0]
 
     return {
         "shop_name": row["shop_name"],
         "address": row["shop_address"],
         "stock_status": row["stock_status"]
     }
-
 
 @app.get("/")
 def home():
