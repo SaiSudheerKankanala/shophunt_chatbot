@@ -31,11 +31,13 @@ from transformers import pipeline
 # 1. CONNECT TO MYSQL
 # ------------------------------------------------------------
 conn = mysql.connector.connect(
-    'host': 'ballast.proxy.rlwy.net',
-    'user': 'root',
-    'password': 'SjmGYKKMDAYKGzYQzlkISNiLSMeBvlfi',
-    'database': 'railway'
+    host='ballast.proxy.rlwy.net',
+    user='root',
+    password='SjmGYKKMDAYKGzYQzlkISNiLSMeBvlfi',
+    database='railway',
+    port=19240
 )
+
 
 df = pd.read_sql("SELECT * FROM product_inventory;", conn)
 
