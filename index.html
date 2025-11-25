@@ -1,36 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Shop Hunt Assist Bot</title>
-  <style>
-    body { font-family: Arial; padding: 20px; }
-    #output { margin-top: 20px; white-space: pre-line; font-size: 18px; }
-  </style>
+    <title>ShopHunt Assist Bot</title>
 </head>
 <body>
 
-<h2>Shop Hunt - Chatbot</h2>
+<h2>Ask Your Question</h2>
 
-<input id="userInput" type="text" placeholder="Ask about a product..." style="width:300px;">
+<input type="text" id="question" placeholder="Enter product name..." style="width:300px;">
 <button onclick="askBot()">Ask</button>
 
-<div id="output"></div>
+<p id="response"></p>
 
 <script>
 async function askBot() {
-    let question = document.getElementById("userInput").value;
+    const question = document.getElementById("question").value;
 
-    let response = await fetch("https://YOUR-RAILWAY-APP.up.railway.app/ask", {
+    const res = await fetch("https://<your-railway-url>.railway.app/ask", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json"
+        },
         body: JSON.stringify({ question })
     });
 
-    let data = await response.json();
-    
-    document.getElementById("output").innerText =
-        `Shop: ${data.shop_name || data.answer}\nAddress: ${data.address || ""}\nStatus: ${data.stock_status || ""}`;
+    const data = await res.json();
+    document.getElementById("response").innerText = JSON.stringify(data, null, 2);
 }
 </script>
 
