@@ -1,29 +1,18 @@
-# -*- coding: utf-8 -*-
-# Customer ShopHunt AssistBot – Fixed Version
-
-!pip install langchain-text-splitters
-!pip install reportlab
-!pip install fpdf
-!pip install pypdf
-!pip install langchain-community
-!pip install mysql-connector-python
-
-import os
-os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-
+from fastapi import FastAPI
+from pydantic import BaseModel
 import mysql.connector
 import pandas as pd
-from fpdf import FPDF
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from fpdf import FPDF
+from langchain_community.document_loaders import PyPDFLoader
 from transformers import pipeline
 
+app = FastAPI()
 
-# ------------------------------------------------------------
-# 1. FIXED MYSQL CONNECTION
-# ------------------------------------------------------------
+# ------------------ DATABASE ------------------
+
 conn = mysql.connector.connect(
     host='ballast.proxy.rlwy.net',
     user='root',
@@ -33,14 +22,11 @@ conn = mysql.connector.connect(
 )
 
 df = pd.read_sql("SELECT * FROM product_inventory;", conn)
-
-# Create product list (lowercase)
 product_list = df['product_name'].str.lower().tolist()
 
+# ------------------ PDF ------------------
+pdf_path = "product_report.pdf"
 
-# ------------------------------------------------------------
-# 2. CREATE PDF FROM DATABASE
-# ------------------------------------------------------------
 def create_pdf_from_df(df, output_path):
     pdf = FPDF()
     pdf.add_page()
@@ -72,53 +58,35 @@ def create_pdf_from_df(df, output_path):
         pdf.multi_cell(0, 8, text)
         pdf.ln(2)
 
-    pdf.output(output_path, dest='F')
+    pdf.output(output_path)
 
-
-pdf_path = "product_report.pdf"
 create_pdf_from_df(df, pdf_path)
 
+# ------------------ PDF LOAD + VECTOR DB ------------------
 
-# ------------------------------------------------------------
-# 3. LOAD PDF + CLEAN TEXT
-# ------------------------------------------------------------
 loader = PyPDFLoader(pdf_path)
 documents = loader.load()
+for d in documents:
+    d.page_content = " ".join(d.page_content.split())
 
-for doc in documents:
-    doc.page_content = " ".join(doc.page_content.split())
+splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=40)
+chunks = splitter.split_documents(documents)
 
-
-# ------------------------------------------------------------
-# 4. SPLIT INTO CHUNKS
-# ------------------------------------------------------------
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=400,
-    chunk_overlap=40
-)
-chunks = text_splitter.split_documents(documents)
-
-
-# ------------------------------------------------------------
-# 5. EMBEDDINGS + VECTOR DB
-# ------------------------------------------------------------
 embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 vector_db = FAISS.from_documents(chunks, embeddings)
 
-
-# ------------------------------------------------------------
-# 6. QA MODEL
-# ------------------------------------------------------------
 qa_model = pipeline("text2text-generation", model="google/flan-t5-base")
 
+# ------------------ API REQUEST MODEL ------------------
 
-# ------------------------------------------------------------
-# 7. IMPROVED ANSWER FUNCTION
-# ------------------------------------------------------------
-def answer_question(vector_db, question):
+class Question(BaseModel):
+    question: str
+
+# ------------------ FUNCTION ------------------
+
+def answer_question(question):
     q = question.lower()
 
-    # match words inside product name
     best_match = None
     for product in product_list:
         if all(word in q for word in product.split()):
@@ -126,24 +94,18 @@ def answer_question(vector_db, question):
             break
 
     if not best_match:
-        return "Product unavailable"
+        return {"answer": "Product unavailable"}
 
-    product_row = df[df['product_name'].str.lower() == best_match]
+    row = df[df['product_name'].str.lower() == best_match].iloc[0]
 
-    if product_row.empty:
-        return "Product unavailable"
+    return {
+        "shop_name": row['shop_name'],
+        "address": row['shop_address'],
+        "stock_status": row['stock_status']
+    }
 
-    row = product_row.iloc[0]
+# ------------------ API ROUTE ------------------
 
-    return f"""
-Shop Name   : {row['shop_name']}
-Address     : {row['shop_address']}
-Stock Status: {row['stock_status']}
-"""
-
-
-# ------------------------------------------------------------
-# 8. USER QUERY
-# ------------------------------------------------------------
-question = input("Ask your question: ")
-print("\nAssistant:", answer)
+@app.post("/ask")
+def ask_api(data: Question):
+    return answer_question(data.question)
