@@ -1,4 +1,4 @@
-flask
+fastapi
+uvicorn
 mysql-connector-python
 pandas
-numpy
