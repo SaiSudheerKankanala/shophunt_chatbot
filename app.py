@@ -1,4 +1,4 @@
-# main.py
+# app.py
 import mysql.connector
 import pandas as pd
 from fastapi import FastAPI
@@ -6,8 +6,10 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-# Connect on startup
-def get_data():
+class Query(BaseModel):
+    question: str
+
+def fetch_data():
     conn = mysql.connector.connect(
         host="ballast.proxy.rlwy.net",
         user="root",
@@ -27,17 +29,13 @@ def get_data():
 
     return df
 
-df = get_data()
-product_list = df["product_name"].str.lower().tolist()
-
-
-class Query(BaseModel):
-    question: str
-
 
 @app.post("/ask")
 def ask(query: Query):
+    df = fetch_data()   # Load DB ONLY when request comes
+
     q = query.question.lower()
+    product_list = df["product_name"].str.lower().tolist()
 
     match = [p for p in product_list if p in q]
     if not match:
@@ -50,6 +48,7 @@ def ask(query: Query):
         return {"response": "Product unavailable"}
 
     row = row.iloc[0]
+
     return {
         "shop_name": row["shop_name"],
         "address": row["shop_address"],
