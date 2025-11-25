@@ -1,10 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import mysql.connector
 import pandas as pd
+import os
 
 app = FastAPI()
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS FIX
 app.add_middleware(
@@ -59,4 +65,8 @@ def ask(query: Query):
 
 @app.get("/")
 def home():
+    return FileResponse('index.html')
+
+@app.get("/health")
+def health_check():
     return {"status": "Backend running"}
